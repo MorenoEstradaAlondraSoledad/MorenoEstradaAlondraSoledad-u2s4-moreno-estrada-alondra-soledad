@@ -23,17 +23,15 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# SECRET_KEY: ya no queda escrita en el código — se lee del .env / de Render
+SECRET_KEY = config('SECRET_KEY')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s_bcj2w*6=y-98&x@a5zvhe)c3-mt@7sgmga1l_5pjh@ax3bfc'
+# DEBUG: default=False es la opción segura si la variable no está definida
+# cast=bool convierte el texto "True"/"False" del .env en un booleano real de Python
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
+# ALLOWED_HOSTS: lista de dominios que Django acepta atender; Csv() la separa por comas
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 
 # Application definition
 
@@ -149,3 +147,35 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+MIDDLEWARE = [
+    # SecurityMiddleware: agrega cabeceras de seguridad básicas a cada respuesta
+    'django.middleware.security.SecurityMiddleware',
+    # WhiteNoiseMiddleware: nueva línea — debe ir justo después de SecurityMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # SessionMiddleware: habilita las sesiones (login, carrito, etc.)
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # CommonMiddleware: ajustes generales de peticiones/respuestas
+    'django.middleware.common.CommonMiddleware',
+    # CsrfViewMiddleware: protege los formularios contra ataques CSRF
+    'django.middleware.csrf.CsrfViewMiddleware',
+    # AuthenticationMiddleware: asocia cada petición con el usuario logueado (si hay uno)
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # MessageMiddleware: habilita mensajes flash de una sola vista (ej. "guardado con éxito")
+    'django.contrib.messages.middleware.MessageMiddleware',
+    # XFrameOptionsMiddleware: evita que tu sitio se cargue dentro de un <iframe> ajeno
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# STATIC_ROOT: carpeta donde collectstatic junta todos los archivos estáticos antes de publicar
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# STORAGES: le dice a Django que use whitenoise para comprimir y versionar esos archivos
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    # cierre de la config de "staticfiles"
+    },
+# cierre del diccionario STORAGES
+}
+
