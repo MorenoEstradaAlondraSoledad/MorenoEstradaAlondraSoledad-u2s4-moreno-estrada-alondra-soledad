@@ -4,3 +4,5 @@ venv/
 .env
 # __pycache__/: archivos compilados que Python genera solo, no son código fuente
 __pycache__/
+# staticfiles/: NUEVO — carpeta que genera collectstatic; Render la crea de nuevo en cada deploy
+staticfiles/

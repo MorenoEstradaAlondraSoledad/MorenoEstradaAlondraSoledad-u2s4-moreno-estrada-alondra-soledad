@@ -11,50 +11,84 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
+
 # pymysql: el conector que instalaste en el paso 02
 import pymysql
 # Hace que Django use pymysql como si fuera el driver oficial de MySQL para Python
 pymysql.install_as_MySQLdb()
 
 # config: función de python-decouple que lee valores del archivo .env
-from decouple import config
+from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# SECRET_KEY: ya no queda escrita en el código — se lee del .env / de Render
+# se lee de .env (local) o del panel de Render (producción)
 SECRET_KEY = config('SECRET_KEY')
 
-# DEBUG: default=False es la opción segura si la variable no está definida
-# cast=bool convierte el texto "True"/"False" del .env en un booleano real de Python
+# default=False: si falta la variable, queda apagado (lo seguro); cast=bool convierte "True"/"False" en booleano
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-# ALLOWED_HOSTS: lista de dominios que Django acepta atender; Csv() la separa por comas
+# dominios permitidos, separados por comas en la variable
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 
-# Application definition
+# direcciones completas (con https://) desde las que se aceptan formularios, como el login de /admin
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
 
+
+# Application definition
 INSTALLED_APPS = [
+    # apps que Django trae instaladas por defecto (admin, auth, sessions, etc.)
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-     # 'core': tu app nueva, agregada al final de la lista
+    # 'core': tu app nueva, agregada al final de la lista
     'core',
 ]
 
 MIDDLEWARE = [
+    # SecurityMiddleware: agrega cabeceras de seguridad básicas a cada respuesta
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoiseMiddleware: nueva línea — debe ir justo después de SecurityMiddleware
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # SessionMiddleware: habilita las sesiones (login, carrito, etc.)
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # CommonMiddleware: ajustes generales de peticiones/respuestas
     'django.middleware.common.CommonMiddleware',
+    # CsrfViewMiddleware: protege los formularios contra ataques CSRF
     'django.middleware.csrf.CsrfViewMiddleware',
+    # AuthenticationMiddleware: asocia cada petición con el usuario logueado (si hay uno)
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # MessageMiddleware: habilita mensajes flash de una sola vista (ej. "guardado con éxito")
     'django.contrib.messages.middleware.MessageMiddleware',
+    # XFrameOptionsMiddleware: evita que tu sitio se cargue dentro de un <iframe> ajeno
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+# STATIC_ROOT: carpeta donde collectstatic junta todos los archivos estáticos antes de publicar
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# STORAGES: le dice a Django que use whitenoise para comprimir y versionar esos archivos
+# STORAGES: NUEVO — le dice a Django cómo guardar archivos
+STORAGES = {
+    # "default": archivos que suban los usuarios; se deja el sistema normal de Django (obligatorio declararlo)
+    "default": {
+        # FileSystemStorage: guarda en disco, igual que antes de este cambio
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    # cierre de la config de "default"
+    },
+    # "staticfiles": tus CSS/JS/imágenes; whitenoise los comprime y les pone una "huella" en el nombre
+    "staticfiles": {
+        # CompressedManifestStaticFilesStorage: el almacenamiento optimizado que trae whitenoise
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    # cierre de la config de "staticfiles"
+    },
+# cierre del diccionario STORAGES
+}
 
 ROOT_URLCONF = 'miproyecto_meas.urls'
 
@@ -95,7 +129,9 @@ DATABASES = {
         # PORT: puerto de conexión; default='3306' se usa solo si DB_PORT no está en el .env
         'PORT': config('DB_PORT', default='3306'),
         # OPTIONS: Aiven exige que la conexión venga cifrada (SSL)
-        'OPTIONS': {'ssl': {'ssl-mode': 'REQUIRED'}},
+        'OPTIONS': {
+             'ssl': {},
+},
     # cierre del diccionario de configuración de la conexión
     }
 # cierre del diccionario DATABASES
@@ -147,35 +183,3 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
-
-MIDDLEWARE = [
-    # SecurityMiddleware: agrega cabeceras de seguridad básicas a cada respuesta
-    'django.middleware.security.SecurityMiddleware',
-    # WhiteNoiseMiddleware: nueva línea — debe ir justo después de SecurityMiddleware
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    # SessionMiddleware: habilita las sesiones (login, carrito, etc.)
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    # CommonMiddleware: ajustes generales de peticiones/respuestas
-    'django.middleware.common.CommonMiddleware',
-    # CsrfViewMiddleware: protege los formularios contra ataques CSRF
-    'django.middleware.csrf.CsrfViewMiddleware',
-    # AuthenticationMiddleware: asocia cada petición con el usuario logueado (si hay uno)
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # MessageMiddleware: habilita mensajes flash de una sola vista (ej. "guardado con éxito")
-    'django.contrib.messages.middleware.MessageMiddleware',
-    # XFrameOptionsMiddleware: evita que tu sitio se cargue dentro de un <iframe> ajeno
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-# STATIC_ROOT: carpeta donde collectstatic junta todos los archivos estáticos antes de publicar
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# STORAGES: le dice a Django que use whitenoise para comprimir y versionar esos archivos
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    # cierre de la config de "staticfiles"
-    },
-# cierre del diccionario STORAGES
-}
-
